@@ -1,5 +1,8 @@
+from ctypes import py_object
+from functools import cache
 import numpy as np
 from collections import deque
+from numba import jit, njit
 
 
 class Bus():
@@ -52,7 +55,7 @@ class HumanDriveVehicle():
         self.behind_adj = None
         self.new_lane = None
     
-    def move(self, lenght):
+    def move(self, lenght) -> bool:
         """Move vehicle on one time step
         Realises NaSch model of vehicle behavior
 
@@ -63,8 +66,7 @@ class HumanDriveVehicle():
             bool: <True> - if vehicle's position is out of lane 
             length after step, otherwise <False>
         """
-        distance = (self.front_vehicle.position -
-                    self.position - self._lenght) % lenght
+        distance = (self.front_vehicle.position - self.position - self._lenght) % lenght
         velosity = np.min([self.velosity+1, self._vel_max, distance])
         slow = np.random.choice([0, 1], size=1, p=[1-self._slow_prob, 
                                 self._slow_prob])
@@ -154,11 +156,11 @@ class Model():
         self.add_front_vehicle(road_model)
         return road_model
 
-    def step(self):
+    def step(self: py_object):
         """
         One time step of model
         """   
-        num_change = 0
+        num_change: int = 0
         # check for lane change     
         if self.n_lane > 1:
             for index, _ in enumerate(self.road_model):
@@ -196,7 +198,7 @@ class Model():
         if veh_left.position == veh_right.position:
             return 0
         return (veh_right.position - veh_left.position - veh_left._lenght) % self.n_cells
-         
+    
     def __is_line_change(self, current_index, adjacent_index):
         """Checks lane change rules condition for each vehicle
 

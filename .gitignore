@@ -3,3 +3,4 @@
 src/__pycache__/
 .ipynb_checkpoints
 debug.py
+data
