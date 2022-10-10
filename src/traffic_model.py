@@ -30,7 +30,7 @@ class Bus():
 class HumanDriveVehicle():
 
     _lenght = 1
-    _vel_max = 3
+    _vel_max = 5
     lane_change = True
     _slow_prob = 0.5
 
@@ -43,6 +43,7 @@ class HumanDriveVehicle():
         """        
         self.lane = lane
         self.position = position
+        self.__next_postion = position
         self.velosity = 0
         self.front_vehicle = None
         # for change line rule
@@ -68,11 +69,14 @@ class HumanDriveVehicle():
         slow = np.random.choice([0, 1], size=1, p=[1-self._slow_prob, 
                                 self._slow_prob])
         self.velosity = np.max([velosity-slow, 0])
-        self.position += self.velosity
-        if self.position >= lenght:
-            self.position %= lenght
+        self.__next_postion += self.velosity
+        if self.__next_postion >= lenght:
+            self.__next_postion %= lenght
             return True
         return False
+    
+    def update_position(self):
+        self.position = int(self.__next_postion)
 
     @staticmethod
     def initial_position(empty_cells, shape: tuple, amount: int):
@@ -145,8 +149,7 @@ class Model():
 
         road_model = []
         for lane in road_matrix:
-            obj = set(lane)
-            obj.remove(None)
+            obj = [cell for cell in lane if cell is not None]
             road_model.append(deque(obj))
         self.add_front_vehicle(road_model)
         return road_model
@@ -176,6 +179,8 @@ class Model():
             rot = 0
             for vehicle in lane:
                 rot += vehicle.move(self.n_cells)
+            for vehicle in lane:
+                vehicle.update_position()
             lane.rotate(rot)
         return num_change
 
