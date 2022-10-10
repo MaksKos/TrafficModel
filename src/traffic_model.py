@@ -114,6 +114,8 @@ class Model():
         
         self.n_lane = road_parametrs['N_lane']
         self.n_cells = road_parametrs['N_cells']
+        self.result = {'rho': None,'flow': None,'change_frequency': None}
+        self.x_t_diagramm = {i: None for i in range(self.n_lane)}
         empty_cells = np.indices((self.n_lane, self.n_cells), dtype=np.int32).transpose(1, 2, 0).reshape(self.n_cells*self.n_lane, 2)
         vehicle_position = {}
         # position initialization of each vehicle type
@@ -143,7 +145,9 @@ class Model():
 
         road_model = []
         for lane in road_matrix:
-            road_model.append(deque(set(lane).remove(None)))
+            obj = set(lane)
+            obj.remove(None)
+            road_model.append(deque(obj))
         self.add_front_vehicle(road_model)
         return road_model
 
@@ -151,6 +155,7 @@ class Model():
         """
         One time step of model
         """   
+        num_change = 0
         # check for lane change     
         if self.n_lane > 1:
             for index, _ in enumerate(self.road_model):
@@ -161,8 +166,8 @@ class Model():
                 else:
                     self.__is_line_change(index, index+1)
                     self.__is_line_change(index, index-1)
-        # change lane function() 
-        self.__change_lane()
+            # change lane function() 
+            num_change = self.__change_lane()
         self.add_front_vehicle(self.road_model)
         #vehicle move
         for lane in self.road_model:
@@ -172,6 +177,7 @@ class Model():
             for vehicle in lane:
                 rot += vehicle.move(self.n_cells)
             lane.rotate(rot)
+        return num_change
 
     def get_distance(self, veh_left, veh_right):
         """Calculates distance between vehicles (empty cells)
@@ -209,6 +215,7 @@ class Model():
 
         # finding neighbors in the adjacent lane
         i = 0
+        flag = True
         vehicle_adj = lane_adj[i]
         for vehicle in lane:
             if vehicle.lane_change is False or vehicle.is_change is True:
@@ -217,11 +224,12 @@ class Model():
                 ## ?? not necessary
                 vehicle.is_change = False
                 continue
-            while vehicle.position > vehicle_adj.position:
+            while vehicle.position > vehicle_adj.position and flag:
                 i += 1
-                if i == len(vehicle_adj):
+                if i == len(lane_adj):
                     i = 0
                     vehicle_adj = lane_adj[i]
+                    flag = False
                     break
                 vehicle_adj = lane_adj[i]
             vehicle.front_adj = vehicle_adj
@@ -248,15 +256,20 @@ class Model():
     def __change_lane(self):
         """
         Permutes transport between lanes in the model
-        """        
+
+        Return:
+            int: number of vehicles that change lane 
+        """
+        num_change = 0        
         for lane in self.road_model:
             if not lane:
                 continue
-            for vehicle in lane:
+            for vehicle in lane.copy():
                 if vehicle.is_change:
                     vehicle.is_change = False
                     if np.random.rand() > self.lane_change_prob:
                         continue
+                    num_change += 1
                     lane.remove(vehicle)
                     new_lane: deque = self.road_model[vehicle.new_lane]
                     if vehicle.front_adj is None or vehicle.position > vehicle.front_adj.position:
@@ -264,6 +277,7 @@ class Model():
                         continue
                     index_veh = new_lane.index(vehicle.front_adj)
                     new_lane.insert(index_veh, vehicle)
+        return num_change
 
     @staticmethod
     def add_front_vehicle(road):
@@ -278,7 +292,8 @@ class Model():
                 continue
             for i in range(len(lane)):
                 if i == len(lane)-1:
-                   lane[i].front_vehicle = lane[0] 
+                   lane[i].front_vehicle = lane[0]
+                   continue 
                 lane[i].front_vehicle = lane[i+1]
 
     def model_stabilization(self, n_step: int):
@@ -291,24 +306,44 @@ class Model():
         for _ in range(n_step):
             self.step()
 
-    def model_research(self, n_step: int):
+    def model_research(self, n_step: int, is_diagramm=False):
         """Method save information about cars position and velosity
 
         Args:
             n_step (int): time step for research
-        """        
-        for _ in range(n_step):
-            self.step()
+        """  
+        total_change = 0
+        total_velosity = 0   
+        if is_diagramm:
+            for key in self.x_t_diagramm:
+                self.x_t_diagramm[key] = np.full((n_step, self.n_cells), None)
+        for i in range(n_step):
+            total_change += self.step()
+            total_velosity += self.__get_sum_velosity()
+            if is_diagramm:
+                self.__x_t_layer(i)
+
+        self.result['rho'] = sum([len(lane) for lane in self.road_model]) / self.n_cells / self.n_lane
+        self.result['change_frequency'] = total_change / self.n_lane / n_step
+        self.result['flow'] = total_velosity / self.n_lane / self.n_cells / n_step
+
+    def __get_sum_velosity(self):
+        sum_vel = 0
+        for lane in self.road_model:
+            if not lane:
+                continue
+            for veh in lane:
+                sum_vel += veh.velosity
+        return sum_vel
+
+    def __x_t_layer(self, step: int):
+        for index, lane in enumerate(self.road_model):
+            if not lane:
+                continue
+            for veh in lane:
+                self.x_t_diagramm[index][step][veh.position : veh.position+veh._lenght] = veh.velosity
 
     def get_data(self):
-        pass
+        return self.x_t_diagramm
 
         
-
-
-
-
-        
-        
-
-
