@@ -1,5 +1,3 @@
-from ctypes import py_object
-from functools import cache
 import numpy as np
 from collections import deque
 from numba import jit, njit
@@ -156,7 +154,7 @@ class Model():
         self.add_front_vehicle(road_model)
         return road_model
 
-    def step(self: py_object):
+    def step(self):
         """
         One time step of model
         """   
@@ -267,7 +265,7 @@ class Model():
         Return:
             int: number of vehicles that change lane 
         """
-        num_change = 0        
+        num_change = 0    
         for lane in self.road_model:
             if not lane:
                 continue
@@ -278,12 +276,9 @@ class Model():
                         continue
                     num_change += 1
                     lane.remove(vehicle)
-                    new_lane: deque = self.road_model[vehicle.new_lane]
-                    if vehicle.front_adj is None or vehicle.position > vehicle.front_adj.position:
-                        new_lane.append(vehicle)
-                        continue
-                    index_veh = new_lane.index(vehicle.front_adj)
-                    new_lane.insert(index_veh, vehicle)
+                    self.road_model[vehicle.new_lane].append(vehicle)
+        for index, lane in enumerate(self.road_model):
+            self.road_model[index] = deque(sorted(lane, key=lambda veh: veh.position))
         return num_change
 
     @staticmethod
