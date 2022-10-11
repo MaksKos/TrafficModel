@@ -8,6 +8,7 @@ class Bus():
     _lenght = 2
     _vel_max = 3
     lane_change = False
+    _station = None
 
     def __init__(self, lane: int, position: int) -> None:
         pass
@@ -26,6 +27,9 @@ class Bus():
         for i in range(Bus._lenght):
             empty_cells = np.delete(empty_cells, index_position+i, axis=0)
         return buses_position, empty_cells
+
+    def set_station(self, station: tuple) -> None:
+        self._station = station
 
 
 class HumanDriveVehicle():
