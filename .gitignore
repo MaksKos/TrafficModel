@@ -1,6 +1,7 @@
 .vscode
 .pytest_cache
-src/__pycache__/
+src/traffic_model/__pycache__/
+src/tests/__pycache__/
 .ipynb_checkpoints
 debug.py
 data

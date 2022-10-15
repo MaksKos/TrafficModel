@@ -104,6 +104,10 @@ class Bus():
     @classmethod
     def set_station(cls, station: tuple) -> None:
         cls._station = station
+    
+    @property
+    def get_station(self):
+        return self.__index_station
 
 
 class HumanDriveVehicle():
