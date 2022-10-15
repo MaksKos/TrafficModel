@@ -9,9 +9,79 @@ class Bus():
     _vel_max = 3
     lane_change = False
     _station = None
+    _stop_step = 20
+    _slow_prob = 0.5
 
     def __init__(self, lane: int, position: int) -> None:
-        pass
+        """Initialization object  of human drive vehicle
+
+        Args:
+            lane (int): index of lane 
+            position (int): position on lane
+        """        
+        self.lane = lane
+        self.position = position
+        self.__next_postion = position
+        self.velosity = 0
+        self.front_vehicle = None
+        # station 
+        self.__index_station = self.__first_station()
+        self.__is_station = False
+        self.__stop_count = 0
+        # for change line rule
+        self.is_change = False
+        self.front_adj = None
+        self.behind_adj = None
+        self.new_lane = None
+    
+    def __first_station(self) -> None:
+        for i, stat in enumerate(self._station):
+            if stat >= self.position+self._lenght:
+                return i
+        return 0
+    
+    def move(self, lenght) -> bool:
+        """Move vehicle on one time step
+        Realises NaSch model of vehicle behavior
+
+        Args:
+            lenght (int): total number of lane cells
+
+        Returns:
+            bool: <True> - if vehicle's position is out of lane 
+            length after step, otherwise <False>
+        """
+
+        distance = (self.front_vehicle.position - self.position - self._lenght) % lenght
+        station_dist = int((self._station[self.__index_station] - self.position - self._lenght) % lenght)
+        if station_dist == 0:
+            self.__is_station = True
+        
+        if self.__is_station:
+            if self.__stop_count <= self._stop_step:
+                self.__stop_count += 1
+                self.__next_postion += 0
+                self.velosity = 0
+                return False
+            else:
+                self.__is_station = False
+                self.__stop_count = 0
+                self.__index_station += 1
+                self.__index_station %= len(self._station)
+
+        velosity = np.min([self.velosity+1, self._vel_max, distance, station_dist])
+        slow = np.random.choice([0, 1], size=1, p=[1-self._slow_prob, 
+                                self._slow_prob])
+        self.velosity = np.max([velosity-slow, 0])
+        # check station
+        self.__next_postion += self.velosity
+        if self.__next_postion >= lenght:
+            self.__next_postion %= lenght
+            return True
+        return False
+
+    def update_position(self):
+        self.position = int(self.__next_postion)
 
     @staticmethod
     def initial_position(empty_cells, shape: tuple, amount: int):
@@ -19,17 +89,21 @@ class Bus():
         bus_lane = int(0)
         buses_cells = empty_cells[empty_cells.T[0] == bus_lane]
         buses_cells = buses_cells[::Bus._lenght]
+      
         if buses_cells.shape[0] < amount:
             raise ValueError("No free cells for buses")
         index_position = np.sort(np.random.choice(
             buses_cells.T[1], size=amount, replace=False))
-        buses_position = buses_cells[index_position]
+        buses_position = empty_cells[index_position]
+        del_index=[]
         for i in range(Bus._lenght):
-            empty_cells = np.delete(empty_cells, index_position+i, axis=0)
+            del_index.extend(index_position+1)
+        empty_cells = np.delete(empty_cells, np.array(del_index), axis=0)
         return buses_position, empty_cells
 
-    def set_station(self, station: tuple) -> None:
-        self._station = station
+    @classmethod
+    def set_station(cls, station: tuple) -> None:
+        cls._station = station
 
 
 class HumanDriveVehicle():
@@ -221,6 +295,7 @@ class Model():
                 vehicle.new_lane = adjacent_index
                 vehicle.front_adj = None
                 vehicle.behind_adj = None
+            return None
 
         # finding neighbors in the adjacent lane
         i = 0
