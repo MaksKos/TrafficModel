@@ -1,3 +1,5 @@
+import re
+from turtle import position
 import numpy as np
 from collections import deque
 from numba import jit, njit
@@ -51,7 +53,8 @@ class Bus():
             bool: <True> - if vehicle's position is out of lane 
             length after step, otherwise <False>
         """
-
+        if self.front_vehicle.position == self.position:
+            raise ValueError('The cells overlay')
         distance = (self.front_vehicle.position - self.position - self._lenght) % lenght
         station_dist = int((self._station[self.__index_station] - self.position - self._lenght) % lenght)
         if station_dist == 0:
@@ -88,7 +91,7 @@ class Bus():
 
         bus_lane = int(0)
         buses_cells = empty_cells[empty_cells.T[0] == bus_lane]
-        buses_cells = buses_cells[::Bus._lenght]
+        buses_cells = buses_cells[:-1:Bus._lenght]
       
         if buses_cells.shape[0] < amount:
             raise ValueError("No free cells for buses")
@@ -97,7 +100,7 @@ class Bus():
         buses_position = empty_cells[index_position]
         del_index=[]
         for i in range(Bus._lenght):
-            del_index.extend(index_position+1)
+            del_index.extend(index_position+i)
         empty_cells = np.delete(empty_cells, np.array(del_index), axis=0)
         return buses_position, empty_cells
 
@@ -106,14 +109,17 @@ class Bus():
         cls._station = station
     
     @property
-    def get_station(self):
+    def station(self):
         return self.__index_station
+
+    def __str__(self) -> str:
+        return str([self.position+i for i in range(self._lenght)])
 
 
 class HumanDriveVehicle():
 
     _lenght = 1
-    _vel_max = 5
+    _vel_max = 3
     lane_change = True
     _slow_prob = 0.5
 
@@ -146,6 +152,8 @@ class HumanDriveVehicle():
             bool: <True> - if vehicle's position is out of lane 
             length after step, otherwise <False>
         """
+        if self.front_vehicle.position == self.position:
+            raise ValueError('The cells overlay')
         distance = (self.front_vehicle.position - self.position - self._lenght) % lenght
         velosity = np.min([self.velosity+1, self._vel_max, distance])
         slow = np.random.choice([0, 1], size=1, p=[1-self._slow_prob, 
@@ -159,6 +167,9 @@ class HumanDriveVehicle():
     
     def update_position(self):
         self.position = int(self.__next_postion)
+
+    def __str__(self) -> str:
+        return str([self.position+i for i in range(self._lenght)])
 
     @staticmethod
     def initial_position(empty_cells, shape: tuple, amount: int):
@@ -233,7 +244,7 @@ class Model():
         for lane in road_matrix:
             obj = [cell for cell in lane if cell is not None]
             road_model.append(deque(obj))
-        self.add_front_vehicle(road_model)
+        self.road_model=self.add_front_vehicle(road_model)
         return road_model
 
     def step(self):
@@ -241,7 +252,7 @@ class Model():
         One time step of model
         """   
         num_change: int = 0
-        # check for lane change     
+        # check for lane change   
         if self.n_lane > 1:
             for index, _ in enumerate(self.road_model):
                 if index == 0:
@@ -253,7 +264,7 @@ class Model():
                     self.__is_line_change(index, index-1)
             # change lane function() 
             num_change = self.__change_lane()
-        self.add_front_vehicle(self.road_model)
+        self.road_model = self.add_front_vehicle(self.road_model)
         #vehicle move
         for lane in self.road_model:
             if not lane:
@@ -308,11 +319,11 @@ class Model():
         for vehicle in lane:
             if vehicle.lane_change is False or vehicle.is_change is True:
                 continue
-            if vehicle.position == vehicle_adj.position:
-                ## ?? not necessary
+            if self.is_intersection(vehicle, vehicle_adj, self.n_cells):
                 vehicle.is_change = False
                 continue
-            while vehicle.position > vehicle_adj.position and flag:
+
+            while vehicle.position >= vehicle_adj.position and flag:
                 i += 1
                 if i == len(lane_adj):
                     i = 0
@@ -320,6 +331,9 @@ class Model():
                     flag = False
                     break
                 vehicle_adj = lane_adj[i]
+            if self.is_intersection(vehicle, vehicle_adj, self.n_cells):
+                vehicle.is_change = False
+                continue
             vehicle.front_adj = vehicle_adj
             vehicle.behind_adj = lane_adj[i-1]
             if self.__rule_lane_change(vehicle):
@@ -334,10 +348,16 @@ class Model():
 
         Returns:
             bool: True - change lane to adjacent, False - stay on lane
-        """        
+        """
+        if vehicle.lane_change is False or vehicle.is_change is True:
+            return False    
+        if vehicle.position == vehicle.front_adj.position:
+            return False
+        if vehicle.position == vehicle.behind_adj.position:
+            return False
         if (vehicle.velosity < vehicle.front_adj.velosity + self.get_distance(vehicle, vehicle.front_adj)) and \
-            (vehicle.velosity > vehicle.front_vehicle.velosity + self.get_distance(vehicle, vehicle.front_vehicle)) and \
-            (vehicle.velosity > vehicle.behind_adj.velosity + self.get_distance(vehicle.behind_adj, vehicle)):
+            (vehicle.velosity >= vehicle.front_vehicle.velosity + self.get_distance(vehicle, vehicle.front_vehicle)) and \
+            (vehicle.velosity > vehicle.behind_adj.velosity - self.get_distance(vehicle.behind_adj, vehicle)):
             return True
         return False
 
@@ -348,21 +368,40 @@ class Model():
         Return:
             int: number of vehicles that change lane 
         """
-        num_change = 0    
-        for lane in self.road_model:
+        num_change = 0  
+        for i, lane in enumerate(self.road_model):
             if not lane:
                 continue
             for vehicle in lane.copy():
+                if not vehicle.lane_change:
+                    continue
                 if vehicle.is_change:
+                    # avoid collision with same position    
+                    for veh in self.road_model[vehicle.new_lane]:
+                        if self.is_intersection(vehicle, veh, self.n_cells):
+                            vehicle.is_change = False
+                    if not vehicle.is_change:
+                        continue
+                    # random of lane change step    
                     vehicle.is_change = False
                     if np.random.rand() > self.lane_change_prob:
                         continue
                     num_change += 1
                     lane.remove(vehicle)
                     self.road_model[vehicle.new_lane].append(vehicle)
+
         for index, lane in enumerate(self.road_model):
             self.road_model[index] = deque(sorted(lane, key=lambda veh: veh.position))
         return num_change
+
+    @staticmethod
+    def is_intersection(vehicle_1: HumanDriveVehicle, vehicle_2: HumanDriveVehicle, n_cells):
+        cells_1 = [int((vehicle_1.position+i)%n_cells) for i in range(vehicle_1._lenght)]
+        cells_2 = [int((vehicle_2.position+i)%n_cells) for i in range(vehicle_2._lenght)]
+        cells = cells_1 + cells_2
+        if len(set(cells)) == len(cells):
+            return False
+        return True
 
     @staticmethod
     def add_front_vehicle(road):
@@ -380,6 +419,7 @@ class Model():
                    lane[i].front_vehicle = lane[0]
                    continue 
                 lane[i].front_vehicle = lane[i+1]
+        return road
 
     def model_stabilization(self, n_step: int):
         """Stabilizes system
@@ -388,8 +428,12 @@ class Model():
             n_step (int): time step for stabilization
         Reccomend choose n_step = 10*n_cells
         """
-        for _ in range(n_step):
-            self.step()
+        try:
+            for _ in range(n_step):
+                self.step()
+        except Exception as e:
+            self.__check_overlay(1)
+            raise e
 
     def model_research(self, n_step: int, is_diagramm=False):
         """Method save information about cars position and velosity
@@ -398,7 +442,7 @@ class Model():
             n_step (int): time step for research
         """  
         total_change = 0
-        total_velosity = 0   
+        total_velosity = np.array([0]*self.n_lane)  
         if is_diagramm:
             for key in self.x_t_diagramm:
                 self.x_t_diagramm[key] = np.full((n_step, self.n_cells), None)
@@ -408,20 +452,31 @@ class Model():
             if is_diagramm:
                 self.__x_t_layer(i)
 
-        self.result['rho'] = sum([len(lane) for lane in self.road_model]) / self.n_cells / self.n_lane
-        self.result['change_frequency'] = total_change / self.n_lane / n_step
-        self.result['flow'] = total_velosity / self.n_lane / self.n_cells / n_step
+        self.result['rho'] = [len(lane)/self.n_cells for lane in self.road_model]
+        self.result['flow'] = [lane_vel/ self.n_cells / n_step for lane_vel in total_velosity]
+        self.result['change_frequency'] = np.sum(total_change) / self.n_lane / n_step
 
     def __get_sum_velosity(self):
-        sum_vel = 0
-        for lane in self.road_model:
+        """Calculate sum of vehicle 
+        velocity on each lane
+
+        Returns:
+            ndarray: sum of velosity
+        """
+        sum_vel = np.array([0]*self.n_lane)
+        for i, lane in enumerate(self.road_model):
             if not lane:
                 continue
             for veh in lane:
-                sum_vel += veh.velosity
+                sum_vel[i] += veh.velosity
         return sum_vel
 
     def __x_t_layer(self, step: int):
+        """Add layer with information
+
+        Args:
+            step (int): time step
+        """
         for index, lane in enumerate(self.road_model):
             if not lane:
                 continue
@@ -430,5 +485,56 @@ class Model():
 
     def get_data(self):
         return self.x_t_diagramm
+
+    def __check_overlay(self, step):
+        """
+        Check collisions in model
+        Use for debuging
+        """
+        amount = 0
+        for index, lane in enumerate(self.road_model):
+            if not lane:
+                continue
+            for i in range(len(lane)-1):    
+                if lane[i].position > lane[i+1].position:
+                    print(sum([len(l) for l in self.road_model]))
+                    self.echo_model()
+                    raise TypeError(f'usorted on step={step} on lane={index}')
+        for index, lane in enumerate(self.road_model):
+            if not lane:
+                continue
+            amount += len(lane)
+            positions = []
+            for veh in lane:
+                positions.append(veh.position)
+            if len(set(positions)) != len(lane):
+                print(sum([len(l) for l in self.road_model]))
+                self.echo_model()
+                raise TypeError(f'overlay on step={step} on lane={index}')
+
+    def echo_model(self):
+        """
+        Print vehicles' positions
+        """
+        for index, lane in enumerate(self.road_model):
+            print(f'lane {index}:', end=" ")
+            if not lane:
+                print("empty")
+                continue
+            for veh in lane:
+                print(veh, end=", ")
+            print()
+
+    @property
+    def density(self):
+        if self.result['rho'] is None:
+            return None
+        return sum(self.result['rho']) / self.n_lane
+
+    @property
+    def flow(self):
+        if self.result['flow'] is None:
+            return None
+        return sum(self.result['flow']) / self.n_lane
 
         
