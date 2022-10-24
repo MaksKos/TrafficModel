@@ -456,7 +456,7 @@ class Model():
 
         self.result['rho'] = [len(lane)/self.n_cells for lane in self.road_model]
         self.result['flow'] = [lane_vel/ self.n_cells / n_step for lane_vel in total_velosity]
-        self.result['change_frequency'] = np.sum(total_change) / self.n_lane / n_step
+        self.result['change_frequency'] = np.sum(total_change) / self.n_cells / n_step
 
     def __get_sum_velosity(self):
         """Calculate sum of vehicle 
