@@ -53,7 +53,7 @@ class Bus():
             bool: <True> - if vehicle's position is out of lane 
             length after step, otherwise <False>
         """
-        if self.front_vehicle.position == self.position:
+        if self.front_vehicle.position == self.position and not (self is self.front_vehicle):
             raise ValueError('The cells overlay')
         distance = (self.front_vehicle.position - self.position - self._lenght) % lenght
         station_dist = int((self._station[self.__index_station] - self.position - self._lenght) % lenght)
@@ -218,6 +218,8 @@ class Model():
         # position initialization of each vehicle type
         shape = (self.n_lane, self.n_cells)
         for vehicle_type, amount in vehicles.items():
+            if amount < 1:
+                continue
             vehicle_position[vehicle_type], empty_cells = vehicle_type.initial_position(empty_cells, shape, amount)
         self.road_model = self.__make_road_deque(vehicle_position)
 
