@@ -1,5 +1,3 @@
-import re
-from turtle import position
 import numpy as np
 from collections import deque
 from numba import jit, njit
@@ -30,6 +28,8 @@ class Bus():
         self.__index_station = self.__first_station()
         self.__is_station = False
         self.__stop_count = 0
+        # statistic
+        self.__total_station = 0
         # for change line rule
         self.is_change = False
         self.front_adj = None
@@ -42,7 +42,7 @@ class Bus():
                 return i
         return 0
     
-    def move(self, lenght) -> bool:
+    def move(self, lenght, is_research=False) -> bool:
         """Move vehicle on one time step
         Realises NaSch model of vehicle behavior
 
@@ -71,6 +71,8 @@ class Bus():
                 self.__stop_count = 0
                 self.__index_station += 1
                 self.__index_station %= len(self._station)
+                if is_research:
+                    self.__total_station += 1
 
         velosity = np.min([self.velosity+1, self._vel_max, distance, station_dist])
         slow = np.random.choice([0, 1], size=1, p=[1-self._slow_prob, 
@@ -112,6 +114,9 @@ class Bus():
     def station(self):
         return self.__index_station
 
+    def get_total_stations(self):
+        return self.__total_station
+
     def __str__(self) -> str:
         return str([self.position+i for i in range(self._lenght)])
 
@@ -141,7 +146,7 @@ class HumanDriveVehicle():
         self.behind_adj = None
         self.new_lane = None
     
-    def move(self, lenght) -> bool:
+    def move(self, lenght, is_research=False) -> bool:
         """Move vehicle on one time step
         Realises NaSch model of vehicle behavior
 
@@ -249,7 +254,7 @@ class Model():
         self.road_model=self.add_front_vehicle(road_model)
         return road_model
 
-    def step(self):
+    def step(self, is_research=False):
         """
         One time step of model
         """   
@@ -273,7 +278,7 @@ class Model():
                 continue
             rot = 0
             for vehicle in lane:
-                rot += vehicle.move(self.n_cells)
+                rot += vehicle.move(self.n_cells, is_research=is_research)
             for vehicle in lane:
                 vehicle.update_position()
             lane.rotate(rot)
@@ -444,19 +449,27 @@ class Model():
             n_step (int): time step for research
         """  
         total_change = 0
-        total_velosity = np.array([0]*self.n_lane)  
+        total_velosity = np.array([0]*self.n_lane) 
+        total_velosity_typed = {str(veh_type):0 for veh_type in self.__vehicle_type} 
         if is_diagramm:
             for key in self.x_t_diagramm:
                 self.x_t_diagramm[key] = np.full((n_step, self.n_cells), None)
         for i in range(n_step):
-            total_change += self.step()
+            total_change += self.step(is_research=True)
             total_velosity += self.__get_sum_velosity()
+
+            for veh_type in self.__vehicle_type:
+                total_velosity_typed[str(veh_type)] += self.__get_average_velocity_typed(veh_type)
+
             if is_diagramm:
                 self.__x_t_layer(i)
 
         self.result['rho'] = [len(lane)/self.n_cells for lane in self.road_model]
         self.result['flow'] = [lane_vel/ self.n_cells / n_step for lane_vel in total_velosity]
         self.result['change_frequency'] = np.sum(total_change) / self.n_cells / n_step
+        self.result['station_time'] = self.station_time
+        self.result['velosity_av_typed'] = {veh_type: value/n_step for veh_type, value in total_velosity_typed.items()}
+
 
     def __get_sum_velosity(self):
         """Calculate sum of vehicle 
@@ -472,6 +485,25 @@ class Model():
             for veh in lane:
                 sum_vel[i] += veh.velosity
         return sum_vel
+
+    def __get_average_velocity_typed(self, type_veh):
+        """Calculate sum of each vehicle type 
+        velocity on road
+        Returns:
+            ndarray: sum of velosity
+        """
+        sum_vel = 0
+        count = 0
+        for lane in self.road_model:
+            if not lane:
+                continue
+            for veh in lane:
+                if isinstance(veh, type_veh):
+                    count += 1
+                    sum_vel += veh.velosity
+        if count == 0:
+            return 0
+        return sum_vel/count
 
     def __x_t_layer(self, step: int):
         """Add layer with information
@@ -539,4 +571,21 @@ class Model():
             return None
         return sum(self.result['flow']) / self.n_lane
 
+    @property
+    def station_time(self):
+        if self.result['rho'] is None:
+            return None
+        total_station = 0
+        buses = 0 
+        for lane in self.road_model:
+            if not lane:
+                continue
+            for veh in lane:
+                if not isinstance(veh, Bus):
+                    continue
+                total_station += veh.get_total_stations()
+                buses += 1
+        if buses:
+            return total_station/buses
+        return None
         
