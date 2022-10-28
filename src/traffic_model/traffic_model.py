@@ -157,7 +157,7 @@ class HumanDriveVehicle():
             bool: <True> - if vehicle's position is out of lane 
             length after step, otherwise <False>
         """
-        if self.front_vehicle.position == self.position:
+        if self.front_vehicle.position == self.position and not (self is self.front_vehicle):
             raise ValueError('The cells overlay')
         distance = (self.front_vehicle.position - self.position - self._lenght) % lenght
         velosity = np.min([self.velosity+1, self._vel_max, distance])
