@@ -1,6 +1,5 @@
 import numpy as np
 from collections import deque
-from numba import jit, njit
 
 
 class Bus():
