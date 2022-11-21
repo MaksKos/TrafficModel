@@ -469,7 +469,6 @@ class Model():
         self.result['station_time'] = self.station_time
         self.result['velosity_av_typed'] = {veh_type: value/n_step for veh_type, value in total_velosity_typed.items()}
 
-
     def __get_sum_velosity(self):
         """Calculate sum of vehicle 
         velocity on each lane
@@ -587,4 +586,4 @@ class Model():
         if buses:
             return total_station/buses
         return None
-        
+
