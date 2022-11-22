@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import timeit
 
 import dask
 from dask.distributed import Client, progress
@@ -20,7 +21,11 @@ for cars in cars_arr:
 
 results = dask.persist(*results)
 progress(results)
-results.compute()
 
+start = timeit.default_timer()
+results.compute()
+end = timeit.default_timer()
+
+print(f'time: {(end-start):.2f} s')
 client.close()
 
