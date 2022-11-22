@@ -465,7 +465,7 @@ class Model():
 
         self.result['rho'] = [len(lane)/self.n_cells for lane in self.road_model]
         self.result['flow'] = [lane_vel/ self.n_cells / n_step for lane_vel in total_velosity]
-        self.result['change_frequency'] = np.sum(total_change) / self.n_cells / n_step
+        self.result['change_frequency'] = np.sum(total_change) # / self.n_cells / n_step
         self.result['station_time'] = self.station_time
         self.result['velosity_av_typed'] = {veh_type: value/n_step for veh_type, value in total_velosity_typed.items()}
 

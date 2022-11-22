@@ -6,3 +6,6 @@ src/__pycache__/
 .ipynb_checkpoints
 debug.py
 data
+calculate/data
+calculate/__pycache__/
+calculate/dask-worker-space/
