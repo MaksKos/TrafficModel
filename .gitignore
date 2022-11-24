@@ -9,3 +9,5 @@ data
 calculate/data
 calculate/__pycache__/
 calculate/dask-worker-space/
+test.ipynb
+dask-worker-space/
