@@ -13,7 +13,7 @@ import traffic_model as model
 
 
 #############################################################
-STEP = 1
+STEP = 10
 CORES = 6
 # main settings
 v_max = 5
@@ -41,7 +41,7 @@ def calc_data(n_lane: int, cluster: Client):
         "N_lane": n_lane,
     }
     fun_step = setting_step(road_param, t_s, t_e, v_max)
-    cars_arr = np.arange(n_cells, step=STEP)[1:5]
+    cars_arr = np.arange(0, n_cells, step=STEP)[1:]
     futs = []
     for cars in cars_arr:
         work = cluster.submit(fun_step, cars, pure=False)
