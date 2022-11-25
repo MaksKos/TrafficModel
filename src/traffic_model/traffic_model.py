@@ -27,6 +27,7 @@ class Bus():
         self.__index_station = self.__first_station()
         self.__is_station = False
         self.__stop_count = 0
+        self._flag = False
         # statistic
         self.__total_station = 0
         # for change line rule
@@ -36,6 +37,10 @@ class Bus():
         self.new_lane = None
     
     def __first_station(self) -> None:
+        if self._station is None:
+            raise TypeError("add station")
+        if self._station == 0:
+            return 0
         for i, stat in enumerate(self._station):
             if stat >= self.position+self._lenght:
                 return i
@@ -54,13 +59,23 @@ class Bus():
         """
         if self.front_vehicle.position == self.position and not (self is self.front_vehicle):
             raise ValueError('The cells overlay')
+
         distance = (self.front_vehicle.position - self.position - self._lenght) % lenght
-        station_dist = int((self._station[self.__index_station] - self.position - self._lenght) % lenght)
-        if station_dist == 0:
+
+        if self._station == 0:
+            station_dist = lenght
+        elif len(self._station) == 1 and self.__stop_count > 0:
+            station_dist = lenght
+        elif self._flag:
+            station_dist = lenght
+        else:
+            station_dist = int((self._station[self.__index_station] - self.position - self._lenght) % lenght)
+
+        if station_dist == 0 and not self._flag:
             self.__is_station = True
         
         if self.__is_station:
-            if self.__stop_count <= self._stop_step:
+            if self.__stop_count < self._stop_step:
                 self.__stop_count += 1
                 self.__next_postion += 0
                 self.velosity = 0
@@ -70,6 +85,8 @@ class Bus():
                 self.__stop_count = 0
                 self.__index_station += 1
                 self.__index_station %= len(self._station)
+                if len(self._station) == 1:
+                    self._flag = True
                 if is_research:
                     self.__total_station += 1
 
@@ -78,6 +95,8 @@ class Bus():
                                 self._slow_prob])
         self.velosity = np.max([velosity-slow, 0])
         # check station
+        if self._flag and self.velosity > 0:
+            self._flag = False
         self.__next_postion += self.velosity
         if self.__next_postion >= lenght:
             self.__next_postion %= lenght
