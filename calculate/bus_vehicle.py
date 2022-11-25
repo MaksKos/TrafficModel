@@ -26,14 +26,12 @@ n_cells = 1000
 bus_cap = 80
 station_step = 70
 
-station = tuple([i for i in range(0, n_cells, station_step)])
-
 # save data folder
 directory = 'data/'
 file_name = 'table'
 
 # variable 
-peoples = [100, 300, 1000, 1600]
+peoples_list = [100, 300, 1000, 1600]
 #############################################################
 
 if not os.path.isdir(directory):
@@ -41,7 +39,7 @@ if not os.path.isdir(directory):
 
 # pre - calculation
 proportion = np.linspace(0,1, 101)
-station = tuple([i for i in range(0, n_cells, station_step)])
+station_list = tuple([i for i in range(0, n_cells, station_step)])
 road_param = {
         "N_cells": n_cells,
         "N_lane": n_lane,
@@ -53,9 +51,9 @@ def main():
     client = Client(cluster)
     print(client)
 
-    for n_people in peoples:
+    for n_people in peoples_list:
         print(f"Calculate model with {n_people} peoples")
-        result = calc_data(peoples, client)
+        result = calc_data(n_people, client)
 
         tabel_city = pd.DataFrame(result).drop(labels=['velosity_av_typed'], axis=1)
         tab_veh = [layer['velosity_av_typed'] for layer in result]
@@ -70,7 +68,7 @@ def main():
 
 def calc_data(peoples: int, cluster: Client):
  
-    fun_step = setting_step(road_param, t_s, t_e, v_max, station)
+    fun_step = setting_step(road_param, t_s, t_e, v_max, station_list)
 
     passenger = peoples*proportion
     drivers = peoples - passenger.astype(int)
@@ -86,10 +84,10 @@ def calc_data(peoples: int, cluster: Client):
     results = cluster.gather(futs)
     return results
 
-def setting_step(road_set: dict, t_s: int, t_e: int, v_max: int, station: tuple):
+def setting_step(road_set: dict, t_s: int, t_e: int, v_max: int, stations: tuple):
     def step(buses: int, drivers: int):
         np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
-        model.Bus.set_station(station)
+        model.Bus.set_station(stations)
         model.Bus._vel_max = v_max
         cars_type = {model.Bus: int(buses), model.HumanDriveVehicle: int(drivers)}
         road = model.Model(road_parametrs=road_set, vehicles=cars_type)
