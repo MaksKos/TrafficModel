@@ -13,10 +13,10 @@ import traffic_model as model
 
 
 #############################################################
-STEP = 10
+NUM_POINTS = 100
 CORES = 6
 # main settings
-v_max = 5
+v_max = 3
 # p_cl = 0.8 default
 # p_slow = 0.5 default
 t_s = 5_000
@@ -27,7 +27,7 @@ n_cells = 1000
 directory = 'data/'
 file_name = 'fundamental'
 # variable 
-n_lane = [1, 2]
+n_lane = [2]
 
 #############################################################
 
@@ -41,7 +41,7 @@ def calc_data(n_lane: int, cluster: Client):
         "N_lane": n_lane,
     }
     fun_step = setting_step(road_param, t_s, t_e, v_max)
-    cars_arr = np.arange(0, n_cells, step=STEP)[1:]
+    cars_arr = np.linspace(0, n_cells*n_lane, NUM_POINTS+1)[1:].astype(int)
     futs = []
     for cars in cars_arr:
         work = cluster.submit(fun_step, cars, pure=False)
