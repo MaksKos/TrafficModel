@@ -20,15 +20,15 @@ v_max = 3
 # p_cl = 0.8 default
 # p_slow = 0.5 default
 t_s = 10_000
-t_e = 2000
+t_e = 4000
 n_lane = 1
 
 # save data folder
 directory = 'data/'
 file_name = 'bus'
 # variable 
-steps = [1000, 1000, 200, 100, 50, 50, 50, 100, 100]
-n_station = [0, 1, 5, 10, 20, 5, 10, 5, 20]
+steps = [250, 100, 50, 250, 250] #[1000, 1000, 200, 100, 50, 50, 50, 100, 100]
+n_station = [6, 15, 30, 4, 2] #[0, 1, 5, 10, 20, 5, 10, 5, 20]
 #############################################################
 
 if not os.path.isdir(directory):
