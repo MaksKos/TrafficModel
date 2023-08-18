@@ -11,27 +11,27 @@ if not modul_path in sys.path:
 
 import traffic_model as model
 
-
+print("Calculate with statio_step - 35")
 #############################################################
-STEP = 1
+POINTS = 100 # кол-во рассматриваемых случае - разбтение пропорции [0, 1]
 CORES = 6
 # main settings
 v_max = 3
 # p_cl = 0.8 default
 # p_slow = 0.5 default
-t_s = 10_000
-t_e = 2000
+t_s = 4000 #10_000
+t_e = 4000 #2000
 n_lane = 2
 n_cells = 1000
 bus_cap = 80
-station_step = 70
+station_step = 35 #70
 
 # save data folder
 directory = 'data/'
-file_name = 'table'
+file_name = 'table_station'
 
 # variable 
-peoples_list = [100, 300, 1000, 1600]
+peoples_list = [300] # [100, 300, 1000, 1600]
 #############################################################
 
 if not os.path.isdir(directory):
