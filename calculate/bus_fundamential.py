@@ -11,7 +11,7 @@ if not modul_path in sys.path:
 
 import traffic_model as model
 
-
+# Построение фундаментальной диаграммы для автобусов
 #############################################################
 NUM_POINTS = 100
 CORES = 6

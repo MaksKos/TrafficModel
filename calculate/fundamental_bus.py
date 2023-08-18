@@ -11,23 +11,23 @@ if not modul_path in sys.path:
 
 import traffic_model as model
 
-# фундаменатльная диаграмма для обычных авто
+
 #############################################################
 NUM_POINTS = 100
-CORES = 6
+CORES = 10
 # main settings
 v_max = 3
 # p_cl = 0.8 default
 # p_slow = 0.5 default
-t_s = 5_000
-t_e = 500
+t_s = 3000
+t_e = 1000
 
 n_cells = 1000
 # save data folder
 directory = 'data/'
-file_name = 'fundamental'
+file_name = 'fundamental_bus'
 # variable 
-n_lane = [2]
+n_lane = [1]
 
 #############################################################
 
@@ -41,7 +41,7 @@ def calc_data(n_lane: int, cluster: Client):
         "N_lane": n_lane,
     }
     fun_step = setting_step(road_param, t_s, t_e, v_max)
-    cars_arr = np.linspace(0, n_cells*n_lane, NUM_POINTS+1)[1:].astype(int)
+    cars_arr = np.linspace(1, n_cells*n_lane, NUM_POINTS+1).astype(int)//2
     futs = []
     for cars in cars_arr:
         work = cluster.submit(fun_step, cars, pure=False)
@@ -56,7 +56,12 @@ def setting_step(road_set, t_s, t_e, v_max):
     def step(cars):
         np.warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
         model.HumanDriveVehicle._vel_max = v_max
-        cars = {model.HumanDriveVehicle: cars}
+        cars = {model.Bus: cars}
+        ###
+        stations = tuple([i for i in range(0, n_cells, 100)])
+        model.Bus.set_station(stations)
+        model.Bus._stop_step = 20
+        ###
         road = model.Model(road_parametrs=road_set, vehicles=cars)
         road.model_stabilization(t_s)
         road.model_research(t_e)
