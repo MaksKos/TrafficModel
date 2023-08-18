@@ -274,7 +274,7 @@ class Model():
 
     def step(self, is_research=False):
         """
-        One time step of model
+        One time step of model k
         """   
         num_change: int = 0
         # check for lane change   
