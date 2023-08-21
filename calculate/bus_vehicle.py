@@ -32,7 +32,7 @@ directory = 'data/'
 file_name = 'table_station_140'
 
 # variable 
-peoples_list = [100, 300, 1000, 1600]
+people_list = [100, 300, 1000, 1600]
 #############################################################
 
 if not os.path.isdir(directory):
@@ -52,7 +52,7 @@ def main():
     client = Client(cluster)
     print(client)
 
-    for n_people in peoples_list:
+    for n_people in people_list:
         print(f"Calculate model with {n_people} peoples")
         result = calc_data(n_people, client)
 
