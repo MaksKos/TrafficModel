@@ -11,10 +11,11 @@ if not modul_path in sys.path:
 
 import traffic_model as model
 
-print("Calculate with statio_step - 35")
+print("Calculate with stations' step - 140")
+#print("Calculate with capacity - 40")
 #############################################################
-POINTS = 100 # кол-во рассматриваемых случае - разбтение пропорции [0, 1]
-CORES = 6
+POINTS = 100 # кол-во рассматриваемых случае - разбиение [0, 1]
+CORES = 28
 # main settings
 v_max = 3
 # p_cl = 0.8 default
@@ -23,22 +24,22 @@ t_s = 4000 #10_000
 t_e = 4000 #2000
 n_lane = 2
 n_cells = 1000
-bus_cap = 80
-station_step = 35 #70
+bus_cap = 80 #80
+station_step = 140 #70
 
 # save data folder
 directory = 'data/'
-file_name = 'table_station'
+file_name = 'table_station_140'
 
 # variable 
-peoples_list = [300] # [100, 300, 1000, 1600]
+peoples_list = [100, 300, 1000, 1600]
 #############################################################
 
 if not os.path.isdir(directory):
     os.makedirs(directory)
 
 # pre - calculation
-proportion = np.linspace(0,1, 101)
+proportion = np.linspace(0,1, POINTS+1)
 station_list = tuple([i for i in range(0, n_cells, station_step)])
 road_param = {
         "N_cells": n_cells,
