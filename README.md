@@ -4,7 +4,7 @@ __
 ## Describe 
 This is the module for traffic flow modeling.
 
-The model base on cellular automata (micromodel).
+The Nagel–Schreckenberg (NaSch) model base on cellular automata.
 
 The road is multilanes and circle (periodic boundary condition)
 
