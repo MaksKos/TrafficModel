@@ -1,7 +1,7 @@
 # TrafficModel
 
 __
-## Discribe
+## Describe 
 This is the module for traffic flow modeling.
 
 The model base on cellular automata (micromodel).
